@@ -1,0 +1,19 @@
+services:    
+  arc-drug-interaction-be:
+    build: 
+      context: ./
+      target: dev_environment
+    entrypoint: CompileDaemon -log-prefix=false -build="env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o arc-drug-interaction-be ." -command "./arc-drug-interaction-be"
+    ports:
+      - "0.0.0.0:8080:8080"
+    volumes:
+      - ~/.ssh:/root/.ssh
+      - ./:/app
+    environment:
+      PORT: 8080
+      FDB_ENDPOINT: https://api.fdbcloudconnector.com/CC/api/v1_4/Screen
+      AUTH_SCHEME: ${AUTH_SCHEME}
+      CLIENT_ID: ${CLIENT_ID}
+      SECRET: ${SECRET}
+volumes:
+  data:

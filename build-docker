@@ -1,0 +1,10 @@
+#!/bin/bash
+
+cd $(dirname $0)
+
+TAG=$(git rev-list -1 HEAD .)
+export PROJECT_ID=cutter-214115
+
+IMAGE=gcr.io/$PROJECT_ID/arc-drug-interaction-be:$TAG
+docker build -t $IMAGE .
+docker push $IMAGE
