@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"net/http"
 
 	"contrib.go.opencensus.io/exporter/stackdriver/propagation"
@@ -12,12 +11,7 @@ import (
 	"go.opencensus.io/plugin/ochttp"
 )
 
-type FDBStore interface {
-	GetDrugInteractions(ctx context.Context, drugIds []string) (string, error)
-}
-
 type Handler struct {
-	FDB          FDBStore
 	Interactions *fdb.Client
 }
 

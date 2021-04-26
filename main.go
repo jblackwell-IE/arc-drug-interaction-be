@@ -14,7 +14,6 @@ import (
 	"github.com/IdeaEvolver/cutter-pkg/clog"
 	"github.com/jblackwell-IE/arc-drug-interaction-be/fdb"
 	"github.com/jblackwell-IE/arc-drug-interaction-be/server"
-	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
@@ -27,9 +26,15 @@ type Config struct {
 
 func main() {
 	cfg := &Config{}
-	if err := envconfig.Process("", cfg); err != nil {
-		clog.Fatalf("config: %s", err)
-	}
+	// if err := envconfig.Process("", cfg); err != nil {
+	// 	clog.Fatalf("config: %s", err)
+	// }
+
+	cfg.FDBEndpoint = "https://api.fdbcloudconnector.com/CC/api/v1_4/Screen"
+	cfg.AuthScheme = "SHAREDKEY"
+	cfg.ClientId = "1777"
+	cfg.Secret = "x/RMaGKqBE8KUX8o4qM/V3ZsenNfE6S0ZSQBrV74PM4="
+	cfg.Port = "8080"
 
 	customTransport := http.DefaultTransport.(*http.Transport).Clone()
 	customTransport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}

@@ -3,6 +3,7 @@ package fdb
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/IdeaEvolver/cutter-pkg/client"
@@ -46,8 +47,9 @@ func (c *Client) do(ctx context.Context, req *client.Request, ret interface{}) e
 	return nil
 }
 
-func (c *Client) DrugInteractions(ctx context.Context, drugIds []string) (*ScreenResult, error) {
+func (c *Client) GetDrugInteractions(ctx context.Context, drugIds []string) (*ScreenResult, error) {
 	//"SHAREDKEY"+" " + clientid  + ":" + secret
+	fmt.Println("Drugs ids", drugIds)
 	authString := c.AuthScheme + " " + c.ClientId + ":" + c.Secret
 	//TODO write body; nil for now
 	req, _ := client.NewRequestWithContext(ctx, "POST", c.FDBUrl, nil)
