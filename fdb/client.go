@@ -1,20 +1,20 @@
 package fdb
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/IdeaEvolver/cutter-pkg/client"
 )
 
 type DrugInteractionsResponse struct {
-	Response DDIScreenResults
+	DDIScreenResponse DDIScreenResponse `json:"DDIScreenResponse"`
 }
 
-type DDIScreenResults struct {
-	ScreenResults []ScreenResult
+type DDIScreenResponse struct {
+	DDIScreenResults []ScreenResult `json:"DDIScreenResults"`
 }
 
 type ScreenResult struct {
@@ -27,6 +27,27 @@ type Client struct {
 	AuthScheme string
 	ClientId   string
 	Secret     string
+}
+
+type DrugInteractionsRequest struct {
+	DDiscreenRequest struct {
+		SeverityFilter int `json:"severityFilter"`
+	} `json:"ddiscreenRequest"`
+	CallContext struct {
+		CallSystemName string `json:"callSystemName"`
+	} `json:"callContext"`
+	ScreenProfile ScreenProfile `json:"screenProfile"`
+}
+
+type ScreenProfile struct {
+	ScreenDrugs []ScreenDrug `json:"screenDrugs"`
+}
+
+type ScreenDrug struct {
+	Prospective     bool    `json:"prospective"`
+	DrugId          string  `json:"drugID"`
+	DrugDesc        *string `json:"drugDesc"`
+	DrugConceptType string  `json:"DrugConceptType"`
 }
 
 type HttpClient interface {
@@ -47,12 +68,41 @@ func (c *Client) do(ctx context.Context, req *client.Request, ret interface{}) e
 	return nil
 }
 
-func (c *Client) GetDrugInteractions(ctx context.Context, drugIds []string) (*ScreenResult, error) {
-	//"SHAREDKEY"+" " + clientid  + ":" + secret
-	fmt.Println("Drugs ids", drugIds)
+func (c *Client) GetDrugInteractions(ctx context.Context, drugIds []string) (*DrugInteractionsResponse, error) {
 	authString := c.AuthScheme + " " + c.ClientId + ":" + c.Secret
-	//TODO write body; nil for now
-	req, _ := client.NewRequestWithContext(ctx, "POST", c.FDBUrl, nil)
+
+	interactions := &DrugInteractionsRequest{
+		DDiscreenRequest: struct {
+			SeverityFilter int `json:"severityFilter"`
+		}{
+			SeverityFilter: 9,
+		},
+		CallContext: struct {
+			CallSystemName string `json:"callSystemName"`
+		}{
+			CallSystemName: "Test",
+		},
+		ScreenProfile: ScreenProfile{
+			ScreenDrugs: []ScreenDrug{
+				ScreenDrug{
+					Prospective:     false, // TODO figure out this field, left as false for now based of FDB docs
+					DrugId:          drugIds[0],
+					DrugDesc:        nil,
+					DrugConceptType: "2", // field is required TODO how is this number calculated? Hardcoded for now.
+				},
+				ScreenDrug{
+					Prospective:     false,
+					DrugId:          drugIds[1],
+					DrugDesc:        nil,
+					DrugConceptType: "3", // same TODO
+				},
+			},
+		},
+	}
+
+	b, _ := json.Marshal(interactions)
+
+	req, _ := client.NewRequestWithContext(ctx, "POST", c.FDBUrl, bytes.NewReader(b))
 	req.Header.Add("content-type", "application/json")
 	req.Header.Add("authorization", authString)
 
@@ -61,5 +111,5 @@ func (c *Client) GetDrugInteractions(ctx context.Context, drugIds []string) (*Sc
 		return nil, err
 	}
 
-	return &ret.Response.ScreenResults[0], nil
+	return &ret, nil
 }

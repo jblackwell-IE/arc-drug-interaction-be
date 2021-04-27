@@ -24,6 +24,6 @@ func (h *Handler) GetDrugInteractions(w http.ResponseWriter, r *http.Request) (i
 	return h.getDrugInteractions(r.Context(), req.DrugIds)
 }
 
-func (h *Handler) getDrugInteractions(ctx context.Context, drugIds []string) (*fdb.ScreenResult, error) {
+func (h *Handler) getDrugInteractions(ctx context.Context, drugIds []string) (*fdb.DrugInteractionsResponse, error) {
 	return h.Interactions.GetDrugInteractions(ctx, drugIds)
 }
