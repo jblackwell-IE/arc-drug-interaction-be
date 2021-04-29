@@ -17,11 +17,12 @@ import (
 )
 
 type Config struct {
-	FDBEndpoint string `envconfig:"FDB_ENDPOINT" required:"true"`
-	AuthScheme  string `envconfig:"AUTH_SCHEME" required:"true"`
-	ClientId    string `envconfig:"CLIENT_ID" required:"true"`
-	Secret      string `envconfig:"SECRET" required:"true"`
-	Port        string `envconfig:"PORT"`
+	InteractionsEndpoint string `envconfig:"FDB_INTERACTIONS" required:"true"`
+	DrugIdsEndpoint      string `envconfig:"FDB_DRUG_IDS" required:"true"`
+	AuthScheme           string `envconfig:"AUTH_SCHEME" required:"true"`
+	ClientId             string `envconfig:"CLIENT_ID" required:"true"`
+	Secret               string `envconfig:"SECRET" required:"true"`
+	Port                 string `envconfig:"PORT"`
 }
 
 func main() {
@@ -30,7 +31,8 @@ func main() {
 	// 	clog.Fatalf("config: %s", err)
 	// }
 
-	cfg.FDBEndpoint = "https://api.fdbcloudconnector.com/CC/api/v1_4/Screen"
+	cfg.InteractionsEndpoint = "https://api.fdbcloudconnector.com/CC/api/v1_4/Screen"
+	cfg.DrugIdsEndpoint = "https://api.fdbcloudconnector.com/CC/api/v1_4/PrescribableDrugs"
 	cfg.AuthScheme = "SHAREDKEY"
 	cfg.ClientId = "1777"
 	cfg.Secret = "x/RMaGKqBE8KUX8o4qM/V3ZsenNfE6S0ZSQBrV74PM4="
@@ -53,11 +55,10 @@ func main() {
 	}
 
 	interactionsClient := &fdb.Client{
-		Client:     client.New(internalClient),
-		FDBUrl:     cfg.FDBEndpoint,
-		AuthScheme: cfg.AuthScheme,
-		ClientId:   cfg.ClientId,
-		Secret:     cfg.Secret,
+		Client:               client.New(internalClient),
+		InteractionsEndpoint: cfg.InteractionsEndpoint,
+		DrugIdsEndpoint:      cfg.DrugIdsEndpoint,
+		Auth:                 cfg.AuthScheme + " " + cfg.ClientId + ":" + cfg.Secret,
 	}
 
 	handler := &server.Handler{

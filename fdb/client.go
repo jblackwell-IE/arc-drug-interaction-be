@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/IdeaEvolver/cutter-pkg/client"
@@ -22,11 +23,10 @@ type ScreenResult struct {
 }
 
 type Client struct {
-	Client     *client.Client
-	FDBUrl     string
-	AuthScheme string
-	ClientId   string
-	Secret     string
+	Client               *client.Client
+	InteractionsEndpoint string
+	DrugIdsEndpoint      string
+	Auth                 string
 }
 
 type DrugInteractionsRequest struct {
@@ -50,6 +50,15 @@ type ScreenDrug struct {
 	DrugConceptType string  `json:"DrugConceptType"`
 }
 
+type DrugIdsResponse struct {
+	DrugName string       `json:"drugName"`
+	Items    []DrugResult `json:"Items"`
+}
+
+type DrugResult struct {
+	PrescribableDrugID string `json:"PrescribableDrugID"`
+}
+
 type HttpClient interface {
 	Do(*http.Request) (*http.Response, error)
 }
@@ -68,9 +77,7 @@ func (c *Client) do(ctx context.Context, req *client.Request, ret interface{}) e
 	return nil
 }
 
-func (c *Client) GetDrugInteractions(ctx context.Context, drugIds []string) (*DrugInteractionsResponse, error) {
-	authString := c.AuthScheme + " " + c.ClientId + ":" + c.Secret
-
+func (c *Client) CheckDrugInteractions(ctx context.Context, drugIds []string) (*DrugInteractionsResponse, error) {
 	interactions := &DrugInteractionsRequest{
 		DDiscreenRequest: struct {
 			SeverityFilter int `json:"severityFilter"`
@@ -102,9 +109,9 @@ func (c *Client) GetDrugInteractions(ctx context.Context, drugIds []string) (*Dr
 
 	b, _ := json.Marshal(interactions)
 
-	req, _ := client.NewRequestWithContext(ctx, "POST", c.FDBUrl, bytes.NewReader(b))
+	req, _ := client.NewRequestWithContext(ctx, "POST", c.InteractionsEndpoint, bytes.NewReader(b))
 	req.Header.Add("content-type", "application/json")
-	req.Header.Add("authorization", authString)
+	req.Header.Add("authorization", c.Auth)
 
 	ret := DrugInteractionsResponse{}
 	if err := c.do(ctx, req, &ret); err != nil {
@@ -113,3 +120,26 @@ func (c *Client) GetDrugInteractions(ctx context.Context, drugIds []string) (*Dr
 
 	return &ret, nil
 }
+
+func (c *Client) GetDrugIds(ctx context.Context, drugNames []string) ([]*DrugIdsResponse, error) {
+	drugIds := []*DrugIdsResponse{}
+	for _, name := range drugNames {
+		url := fmt.Sprintf(c.DrugIdsEndpoint+"?callSystemName=test&callid=123&searchtext=%s&searchtype=startswith", name)
+		req, _ := client.NewRequestWithContext(ctx, "GET", url, nil)
+		req.Header.Add("content-type", "application/json")
+		req.Header.Add("authorization", c.Auth)
+
+		drugId := DrugIdsResponse{}
+		if err := c.do(ctx, req, &drugId); err != nil {
+			return nil, err
+		}
+		drugId.DrugName = name
+		fmt.Println("drug id", drugId.Items)
+
+		drugIds = append(drugIds, &drugId)
+	}
+
+	return drugIds, nil
+}
+
+//https://api.fdbcloudconnector.com/CC/api/v1_4/PrescribableDrugs?callSystemName=test&callid=123&searchtext=crestor&searchtype=startswith

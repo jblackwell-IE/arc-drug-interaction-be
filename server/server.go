@@ -34,7 +34,8 @@ func New(cfg *service.Config, handler *Handler) *service.Server {
 
 	router.Route("/api/v1", func(router chi.Router) {
 		router.Route("/", func(router chi.Router) {
-			router.Method("POST", "/check-interactions", service.JsonHandler(handler.GetDrugInteractions))
+			router.Method("POST", "/check-interactions", service.JsonHandler(handler.CheckDrugInteractions))
+			router.Method("GET", "/drugs", service.JsonHandler(handler.GetDrugIds))
 		})
 	})
 
