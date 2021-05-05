@@ -26,7 +26,7 @@ func (h *Handler) CheckDrugInteractions(w http.ResponseWriter, r *http.Request) 
 	return h.checkDrugInteractions(r.Context(), req.DrugIds)
 }
 
-func (h *Handler) checkDrugInteractions(ctx context.Context, drugIds []string) (*fdb.DrugInteractionsResponse, error) {
+func (h *Handler) checkDrugInteractions(ctx context.Context, drugIds []string) ([]*fdb.DrugInteractionsResponse, error) {
 	return h.Interactions.CheckDrugInteractions(ctx, drugIds)
 }
 

@@ -11,6 +11,11 @@ import (
 )
 
 type DrugInteractionsResponse struct {
+	DrugId   string `json:"drugId"`
+	Severity string `json:"severity"`
+}
+
+type Interactions struct {
 	DDIScreenResponse DDIScreenResponse `json:"DDIScreenResponse"`
 }
 
@@ -20,13 +25,6 @@ type DDIScreenResponse struct {
 
 type ScreenResult struct {
 	Severity string `json:"Severity"`
-}
-
-type Client struct {
-	Client               *client.Client
-	InteractionsEndpoint string
-	DrugIdsEndpoint      string
-	Auth                 string
 }
 
 type DrugInteractionsRequest struct {
@@ -51,17 +49,30 @@ type ScreenDrug struct {
 }
 
 type DrugIdsResponse struct {
-	DrugName string       `json:"drugName"`
-	Items    []DrugResult `json:"Items"`
+	DrugName string `json:"drugName"`
+	DrugId   string `json:"drugId"`
+}
+
+type ItemResults struct {
+	Items []DrugResult `json:"Items"`
 }
 
 type DrugResult struct {
 	PrescribableDrugID string `json:"PrescribableDrugID"`
 }
 
+type Client struct {
+	Client               *client.Client
+	InteractionsEndpoint string
+	DrugIdsEndpoint      string
+	Auth                 string
+}
+
 type HttpClient interface {
 	Do(*http.Request) (*http.Response, error)
 }
+
+var amlodipineId = "151400"
 
 func (c *Client) do(ctx context.Context, req *client.Request, ret interface{}) error {
 	res, err := c.Client.Do(req)
@@ -77,48 +88,64 @@ func (c *Client) do(ctx context.Context, req *client.Request, ret interface{}) e
 	return nil
 }
 
-func (c *Client) CheckDrugInteractions(ctx context.Context, drugIds []string) (*DrugInteractionsResponse, error) {
-	interactions := &DrugInteractionsRequest{
-		DDiscreenRequest: struct {
-			SeverityFilter int `json:"severityFilter"`
-		}{
-			SeverityFilter: 9,
-		},
-		CallContext: struct {
-			CallSystemName string `json:"callSystemName"`
-		}{
-			CallSystemName: "Test",
-		},
-		ScreenProfile: ScreenProfile{
-			ScreenDrugs: []ScreenDrug{
-				ScreenDrug{
-					Prospective:     false, // TODO figure out this field, left as false for now based of FDB docs
-					DrugId:          drugIds[0],
-					DrugDesc:        nil,
-					DrugConceptType: "2", // field is required TODO how is this number calculated? Hardcoded for now.
-				},
-				ScreenDrug{
-					Prospective:     false,
-					DrugId:          drugIds[1],
-					DrugDesc:        nil,
-					DrugConceptType: "3", // same TODO
+func (c *Client) CheckDrugInteractions(ctx context.Context, drugIds []string) ([]*DrugInteractionsResponse, error) {
+	ret := []*DrugInteractionsResponse{}
+
+	for _, id := range drugIds {
+		drugsReq := &DrugInteractionsRequest{
+			DDiscreenRequest: struct {
+				SeverityFilter int `json:"severityFilter"`
+			}{
+				SeverityFilter: 9,
+			},
+			CallContext: struct {
+				CallSystemName string `json:"callSystemName"`
+			}{
+				CallSystemName: "Test",
+			},
+			ScreenProfile: ScreenProfile{
+				ScreenDrugs: []ScreenDrug{
+					ScreenDrug{
+						Prospective:     false, // TODO figure out this field, left as false for now based of FDB docs
+						DrugId:          amlodipineId,
+						DrugDesc:        nil,
+						DrugConceptType: "3", // field is required TODO how is this number calculated? Hardcoded for now.
+					},
+					ScreenDrug{
+						Prospective:     false,
+						DrugId:          id,
+						DrugDesc:        nil,
+						DrugConceptType: "3", // same TODO
+					},
 				},
 			},
-		},
+		}
+
+		b, _ := json.Marshal(drugsReq)
+
+		req, _ := client.NewRequestWithContext(ctx, "POST", c.InteractionsEndpoint, bytes.NewReader(b))
+		req.Header.Add("content-type", "application/json")
+		req.Header.Add("authorization", c.Auth)
+
+		interactions := Interactions{}
+		if err := c.do(ctx, req, &interactions); err != nil {
+			return nil, err
+		}
+
+		resp := DrugInteractionsResponse{}
+		resp.DrugId = id
+
+		if len(interactions.DDIScreenResponse.DDIScreenResults) == 0 {
+			resp.Severity = ""
+		} else {
+			resp.Severity = interactions.DDIScreenResponse.DDIScreenResults[0].Severity
+		}
+
+		ret = append(ret, &resp)
+
 	}
 
-	b, _ := json.Marshal(interactions)
-
-	req, _ := client.NewRequestWithContext(ctx, "POST", c.InteractionsEndpoint, bytes.NewReader(b))
-	req.Header.Add("content-type", "application/json")
-	req.Header.Add("authorization", c.Auth)
-
-	ret := DrugInteractionsResponse{}
-	if err := c.do(ctx, req, &ret); err != nil {
-		return nil, err
-	}
-
-	return &ret, nil
+	return ret, nil
 }
 
 func (c *Client) GetDrugIds(ctx context.Context, drugNames []string) ([]*DrugIdsResponse, error) {
@@ -129,12 +156,13 @@ func (c *Client) GetDrugIds(ctx context.Context, drugNames []string) ([]*DrugIds
 		req.Header.Add("content-type", "application/json")
 		req.Header.Add("authorization", c.Auth)
 
-		drugId := DrugIdsResponse{}
-		if err := c.do(ctx, req, &drugId); err != nil {
+		items := ItemResults{}
+		if err := c.do(ctx, req, &items); err != nil {
 			return nil, err
 		}
+		drugId := DrugIdsResponse{}
 		drugId.DrugName = name
-		fmt.Println("drug id", drugId.Items)
+		drugId.DrugId = items.Items[0].PrescribableDrugID
 
 		drugIds = append(drugIds, &drugId)
 	}
